@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Productivity Dashboard</title>
+    <style>
+        :root {
+            --primary: #8b5cf6;
+            --secondary: #ec4899;
+            --bg: #0f172a;
+            --card: #1e293b;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .dashboard {
+            width: 100%;
+            max-width: 900px;
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 20px;
+        }
+
+        .glass-card {
+            background: var(--card);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* Taymer qismi */
+        .timer-section { text-align: center; }
+        #timer-display {
+            font-size: 4rem;
+            font-weight: 800;
+            margin: 20px 0;
+            font-variant-numeric: tabular-nums;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Vazifalar qismi */
+        .task-input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        input {
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: white;
+            outline: none;
+        }
+
+        button {
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-secondary { background: var(--secondary); color: white; }
+
+        .task-list { list-style: none; padding: 0; }
+        .task-item {
+            background: #334155;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .stats { font-size: 0.9rem; color: #94a3b8; margin-top: 10px; }
+
+        @media (max-width: 768px) {
+            .dashboard { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <!-- Chap tomon: Taymer -->
+    <div class="glass-card timer-section">
+        <h3>Fokus Taymer</h3>
+        <div id="timer-display">25:00</div>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+            <button class="btn-primary" id="startBtn" onclick="toggleTimer()">Boshlash</button>
+            <button class="btn-secondary" onclick="resetTimer()">Reset</button>
+        </div>
+        <div class="stats">Tugallangan seanslar: <span id="sessions">0</span></div>
+    </div>
+
+    <!-- O'ng tomon: Vazifalar -->
+    <div class="glass-card">
+        <h3>Bugungi Rejalar</h3>
+        <div class="task-input-group">
+            <input type="text" id="taskInput" placeholder="Yangi vazifa...">
+            <button class="btn-primary" onclick="addTask()">+</button>
+        </div>
+        <ul id="taskList" class="task-list"></ul>
+    </div>
+</div>
+
+<script>
+    // TAYMER LOGIKASI
+    let timeLeft = 25 * 60;
+    let timerId = null;
+    let isRunning = false;
+    let completedSessions = 0;
+
+    function updateTimer() {
+        const mins = Math.floor(timeLeft / 60);
+        const secs = timeLeft % 60;
+        document.getElementById('timer-display').innerText = 
+            `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function toggleTimer() {
+        const btn = document.getElementById('startBtn');
+        if (isRunning) {
+            clearInterval(timerId);
+            btn.innerText = "Davom ettirish";
+        } else {
+            timerId = setInterval(() => {
+                timeLeft--;
+                updateTimer();
+                if (timeLeft <= 0) {
+                    clearInterval(timerId);
+                    completedSessions++;
+                    document.getElementById('sessions').innerText = completedSessions;
+                    alert("Fokus vaqti tugadi! Dam oling.");
+                    resetTimer();
+                }
+            }, 1000);
+            btn.innerText = "To'xtatish";
+        }
+        isRunning = !isRunning;
+    }
+
+    function resetTimer() {
+        clearInterval(timerId);
+        timeLeft = 25 * 60;
+        isRunning = false;
+        document.getElementById('startBtn').innerText = "Boshlash";
+        updateTimer();
+    }
+
+    // VAZIFALAR LOGIKASI
+    const tasks = JSON.parse(localStorage.getItem('prod_tasks')) || [];
+
+    function addTask() {
+        const input = document.getElementById('taskInput');
+        if (input.value.trim()) {
+            tasks.push({ text: input.value, done: false });
+            input.value = '';
+            saveAndRender();
+        }
+    }
+
+    function deleteTask(index) {
+        tasks.splice(index, 1);
+        saveAndRender();
+    }
+
+    function saveAndRender() {
+        localStorage.setItem('prod_tasks', JSON.stringify(tasks));
+        const list = document.getElementById('taskList');
+        list.innerHTML = tasks.map((task, i) => `
+            <li class="task-item">
+                <span>${task.text}</span>
+                <button onclick="deleteTask(${i})" style="background:none; color:#ef4444; border:none; cursor:pointer;">✕</button>
+            </li>
+        `).join('');
+    }
+
+    // Birinchi yuklash
+    saveAndRender();
+</script>
+
+</body>
+</html>
